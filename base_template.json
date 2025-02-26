@@ -219,7 +219,7 @@
                 },
                 "accessPolicies": [
                   {
-                    "objectId": "7a36060a-6296-451c-94dd-5b6c10c05c86",
+                    "objectId": "38f75c81-131b-4b28-a130-3142a0d169c6",
                     "tenantId": "[subscription().tenantId]",
                     "permissions": {
                       "secrets": [
