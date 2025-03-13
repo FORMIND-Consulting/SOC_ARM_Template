@@ -9,6 +9,28 @@
         "description": "Nameoftheclient"
       }
     },
+    "resourceGroupNamingFormat": {
+      "defaultValue": "kebab",
+      "allowedValues": [
+        "kebab",
+        "snake"
+      ],
+      "type": "string",
+      "metadata": {
+        "description": "Format for resource group name: kebab case (with hyphens) or snake case (with underscores)"
+      }
+    },
+    "SecurityInsightsCase": {
+      "defaultValue": "lowercase",
+      "allowedValues": [
+        "lowercase",
+        "uppercase"
+      ],
+      "type": "string",
+      "metadata": {
+        "description": "Case format for the workspace name in SecurityInsights solution: lowercase or uppercase"
+      }
+    },
     "sku": {
       "defaultValue": "PerGB2018",
       "allowedValues": [
@@ -62,7 +84,9 @@
   "variables": {
     "location": "francecentral",
     "workspaceName": "[concat('ALA-',toUpper(parameters('clientName')),'-PROD')]",
-    "resourceGroupName": "[concat('RG-',toUpper(parameters('clientName')))]"
+    "workspaceNameInSolution": "[if(equals(parameters('SecurityInsightsCase'), 'uppercase'), variables('workspaceName'), concat('ala-',toLower(parameters('clientName')),'-prod'))]",
+    "separator": "[if(equals(parameters('resourceGroupNamingFormat'), 'kebab'), '-', '_')]",
+    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]"
   },
   "resources": [
     {
@@ -88,6 +112,9 @@
           "workspaceName": {
             "value": "[variables('workspaceName')]"
           },
+          "workspaceNameInSolution": {
+            "value": "[variables('workspaceNameInSolution')]"
+          },
           "location": {
             "value": "[variables('location')]"
           },
@@ -102,6 +129,9 @@
           },
           "tags": {
             "value": "[parameters('tags')]"
+          },
+          "clientName" : {
+            "value" : "[parameters('clientName')]"
           }
         },
         "template": {
@@ -109,6 +139,9 @@
           "contentVersion": "1.0.0.0",
           "parameters": {
             "workspaceName": {
+              "type": "string"
+            },
+            "workspaceNameInSolution": {
               "type": "string"
             },
             "location": {
@@ -125,6 +158,9 @@
             },
             "tags": {
               "type": "object"
+            },
+            "clientName" : {
+            "type" : "string"
             }
           },
           "resources": [
@@ -151,7 +187,7 @@
             {
               "type": "Microsoft.OperationsManagement/solutions",
               "apiVersion": "2015-11-01-preview",
-              "name": "[concat('SecurityInsights','(',parameters('workspaceName'),')')]",
+              "name": "[concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')')]",
               "location": "[parameters('location')]",
               "dependsOn": [
                 "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
@@ -160,7 +196,7 @@
                 "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
               },
               "plan": {
-                "name": "[concat('SecurityInsights','(',parameters('workspaceName'),')')]",
+                "name": "[concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')')]",
                 "publisher": "Microsoft",
                 "product": "OMSGallery/SecurityInsights",
                 "promotionCode": ""
@@ -171,7 +207,7 @@
               "apiVersion": "2024-09-01",
               "name": "default",
               "dependsOn": [
-                "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceName'),')'))]",
+                "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')'))]",
                 "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
               ],
               "properties": {
@@ -182,7 +218,7 @@
             {
               "name": "[concat(parameters('workspaceName'),'/',parameters('perTableRetentionSettings')[copyIndex()][0])]",
               "type": "Microsoft.OperationalInsights/workspaces/tables",
-              "apiVersion": "2017-04-26-preview",
+              "apiVersion": "2023-09-01",
               "dependsOn": [
                 "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceName'),')'))]"
               ],
@@ -197,7 +233,7 @@
             {
               "type": "Microsoft.KeyVault/vaults",
               "apiVersion": "2023-02-01",
-              "name": "[concat('KV-SOC-',split(parameters('workspaceName'),'-')[1])]",
+              "name": "[concat('KV-SOC-',toUpper(parameters('clientName')))]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "properties": {
@@ -231,7 +267,40 @@
                   }
                 ]
               }
+            },
+            {
+            "type": "Microsoft.ApiManagement/service",
+            "apiVersion": "2024-06-01-preview",
+            "name": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Consumption",
+                "capacity": 0
+            },
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "publisherEmail": "soc@formind.fr",
+                "publisherName": "SOC Formind",
+                "notificationSenderEmail": "apimgmt-noreply@mail.windowsazure.com",
+                "customProperties": {
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
+                },
+                "virtualNetworkType": "None",
+                "disableGateway": false,
+                "natGatewayState": "Disabled",
+                "apiVersionConstraint": {},
+                "publicNetworkAccess": "Enabled",
+                "legacyPortalStatus": "Disabled",
+                "releaseChannel": "Default"
             }
+        }
           ]
         }
       },
