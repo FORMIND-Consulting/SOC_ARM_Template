@@ -241,7 +241,7 @@
                   "family": "A",
                   "name": "standard"
                 },
-                "tenantId": "[subscription().tenantId]",
+                "tenantId": "558176bf-ce27-4532-b203-c9049611edad",
                 "enabledForDeployment": false,
                 "enabledForDiskEncryption": false,
                 "enabledForTemplateDeployment": false,
@@ -257,7 +257,7 @@
                 "accessPolicies": [
                   {
                     "objectId": "38f75c81-131b-4b28-a130-3142a0d169c6",
-                    "tenantId": "[subscription().tenantId]",
+                    "tenantId": "558176bf-ce27-4532-b203-c9049611edad",
                     "permissions": {
                       "secrets": [
                         "get",
