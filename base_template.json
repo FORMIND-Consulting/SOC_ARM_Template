@@ -2,6 +2,20 @@
   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "mspOfferName": {
+       "type": "string",
+       "metadata": {
+        "description": "Specify a unique name for your offer"
+       },
+       "defaultValue": "SOC Formind - Sentinel"
+    },
+    "mspOfferDescription": {
+       "type": "string",
+       "metadata": {
+        "description": "Name of the Managed Service Provider offering"
+       },
+       "defaultValue": "Formind Managed Services of Microsoft Sentinel"
+    },
     "clientName": {
       "defaultValue": "Client",
       "type": "string",
@@ -82,6 +96,21 @@
     }
   },
   "variables": {
+    "mspRegistrationName": "[guid(parameters('mspOfferName'))]",
+    "mspAssignmentName": "[guid(parameters('mspOfferName'))]",
+    "managedByTenantId": "558176bf-ce27-4532-b203-c9049611edad",
+    "authorizations": [
+      {
+       "principalId": "18f48194-d943-47aa-badb-dae82cfc77f7",
+       "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+       "principalIdDisplayName": "Formind - Soc_manage"
+      },
+      {
+       "principalId": "18f48194-d943-47aa-badb-dae82cfc77f7",
+       "roleDefinitionId": "91c1777a-f3dc-4fae-b103-61d183457e46",
+       "principalIdDisplayName": "Formind - Soc_manage"
+      }
+    ],
     "location": "francecentral",
     "workspaceName": "[concat('ALA-',toUpper(parameters('clientName')),'-PROD')]",
     "workspaceNameInSolution": "[if(equals(parameters('SecurityInsightsCase'), 'uppercase'), variables('workspaceName'), concat('ala-',toLower(parameters('clientName')),'-prod'))]",
@@ -90,9 +119,34 @@
   },
   "resources": [
     {
+     "type": "Microsoft.ManagedServices/registrationDefinitions",
+     "apiVersion": "2020-02-01-preview",
+     "name": "[variables('mspRegistrationName')]",
+     "properties": {
+      "registrationDefinitionName": "[parameters('mspOfferName')]",
+      "description": "[parameters('mspOfferDescription')]",
+      "managedByTenantId": "[variables('managedByTenantId')]",
+      "authorizations": "[variables('authorizations')]"
+     }
+    },
+    {
+     "type": "Microsoft.ManagedServices/registrationAssignments",
+     "apiVersion": "2020-02-01-preview",
+     "name": "[variables('mspAssignmentName')]",
+     "dependsOn": [
+      "[resourceId('Microsoft.ManagedServices/registrationDefinitions/', variables('mspRegistrationName'))]"
+     ],
+     "properties": {
+      "registrationDefinitionId": "[resourceId('Microsoft.ManagedServices/registrationDefinitions/', variables('mspRegistrationName'))]"
+     }
+    },
+    {
       "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2021-04-01",
       "name": "[variables('resourceGroupName')]",
+      "dependsOn": [
+       "[resourceId('Microsoft.ManagedServices/registrationAssignments/', variables('mspAssignmentName'))]"
+      ],
       "location": "[variables('location')]",
       "tags": "[parameters('tags')]"
     },
@@ -315,6 +369,14 @@
     "workspaceName": {
       "type": "string",
       "value": "[variables('workspaceName')]"
+    },
+    "mspOfferName": {
+     "type": "string",
+     "value": "[concat('Managed by', ' ', parameters('mspOfferName'))]"
+    },
+    "authorizations": {
+     "type": "array",
+     "value": "[variables('authorizations')]"
     }
   }
 }
