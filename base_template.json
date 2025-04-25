@@ -109,11 +109,6 @@
        "principalId": "18f48194-d943-47aa-badb-dae82cfc77f7",
        "roleDefinitionId": "91c1777a-f3dc-4fae-b103-61d183457e46",
        "principalIdDisplayName": "Formind - Soc_manage"
-      },
-      {
-       "principalId": "18f48194-d943-47aa-badb-dae82cfc77f7",
-       "roleDefinitionId": "1c0163c0-47e6-4577-8991-ea5c82e286e4",
-       "principalIdDisplayName": "Formind - Soc_manage"
       }
     ],
     "location": "francecentral",
