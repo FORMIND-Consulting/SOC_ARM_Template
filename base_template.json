@@ -288,7 +288,7 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')'))]"
+                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/onboardingStates', parameters('workspaceName'), 'Microsoft.SecurityInsights', 'default')]"
               ]
             },
             {
