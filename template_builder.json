@@ -1,0 +1,350 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "clientName": {
+      "defaultValue": "Client",
+      "type": "string",
+      "metadata": {
+        "description": "Nameoftheclient"
+      }
+    },
+    "resourceGroupNamingFormat": {
+      "defaultValue": "kebab",
+      "allowedValues": [
+        "kebab",
+        "snake"
+      ],
+      "type": "string",
+      "metadata": {
+        "description": "Format for resource group name: kebab case (with hyphens) or snake case (with underscores)"
+      }
+    },
+    "SecurityInsightsCase": {
+      "defaultValue": "lowercase",
+      "allowedValues": [
+        "lowercase",
+        "uppercase"
+      ],
+      "type": "string",
+      "metadata": {
+        "description": "Case format for the workspace name in SecurityInsights solution: lowercase or uppercase"
+      }
+    },
+    "sku": {
+      "defaultValue": "PerGB2018",
+      "allowedValues": [
+        "Free",
+        "PerNode",
+        "Premium",
+        "Standard",
+        "Standalone",
+        "PerGB2018"
+      ],
+      "type": "string",
+      "metadata": {
+        "description": "Pricingtier:pergb2018orlegacytiers(Free,Standalone,PerNode,StandardorPremium)"
+      }
+    },
+    "defaultRetention": {
+      "defaultValue": 30,
+      "minValue": 7,
+      "maxValue": 730,
+      "type": "int",
+      "metadata": {
+        "description": "NumberofdaysofretentionasadefaultvalueforLogAnalyticsWorkspace.OnlyusedifconfigureDefaultRetentionissetto'true'."
+      }
+    },
+    "perTableRetentionSettings": {
+      "defaultValue": [
+        [
+          "SecurityIncident",
+          365
+        ],
+        [
+          "SecurityAlert",
+          365
+        ]
+      ],
+      "type": "array",
+      "metadata": {
+        "description": "Arraycontainingthelistofdatatable-retentiondaypairsforwhichyouwanttochangetheretentionperiod.UsethedefaultemptyarrayvalueifyouwantthedatatabletousethedefaultLogAnalyticsWorkspaceretentionperiod."
+      }
+    },
+    "tags": {
+      "defaultValue": {
+        
+      },
+      "type": "object",
+      "metadata": {
+        "description": "Resourcetags"
+      }
+    }
+  },
+  "variables": {
+    "location": "francecentral",
+    "workspaceName": "[concat('ALA-',toUpper(parameters('clientName')),'-PROD')]",
+    "workspaceNameInSolution": "[if(equals(parameters('SecurityInsightsCase'), 'uppercase'), variables('workspaceName'), concat('ala-',toLower(parameters('clientName')),'-prod'))]",
+    "separator": "[if(equals(parameters('resourceGroupNamingFormat'), 'kebab'), '-', '_')]",
+    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[variables('resourceGroupName')]",
+      "location": "[variables('location')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2021-04-01",
+      "name": "workspaceDeployment",
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups',variables('resourceGroupName'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "Inner"
+        },
+        "parameters": {
+          "workspaceName": {
+            "value": "[variables('workspaceName')]"
+          },
+          "workspaceNameInSolution": {
+            "value": "[variables('workspaceNameInSolution')]"
+          },
+          "location": {
+            "value": "[variables('location')]"
+          },
+          "sku": {
+            "value": "[parameters('sku')]"
+          },
+          "defaultRetention": {
+            "value": "[parameters('defaultRetention')]"
+          },
+          "perTableRetentionSettings": {
+            "value": "[parameters('perTableRetentionSettings')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "clientName" : {
+            "value" : "[parameters('clientName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "workspaceName": {
+              "type": "string"
+            },
+            "workspaceNameInSolution": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "sku": {
+              "type": "string"
+            },
+            "defaultRetention": {
+              "type": "int"
+            },
+            "perTableRetentionSettings": {
+              "type": "array"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "clientName" : {
+            "type" : "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[parameters('workspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "[parameters('sku')]"
+                },
+                "retentionInDays": "[parameters('defaultRetention')]",
+                "features": {
+                  "searchVersion": 1,
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                },
+                "workspaceCapping": {
+                  "dailyQuotaGb": -1
+                }
+              }
+            },
+            {
+              "type": "Microsoft.OperationsManagement/solutions",
+              "apiVersion": "2015-11-01-preview",
+              "name": "[concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
+              ],
+              "properties": {
+                "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
+              },
+              "plan": {
+                "name": "[concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')')]",
+                "publisher": "Microsoft",
+                "product": "OMSGallery/SecurityInsights",
+                "promotionCode": ""
+              }
+            },
+            {
+              "type": "Microsoft.SecurityInsights/onboardingStates",
+              "apiVersion": "2024-09-01",
+              "name": "default",
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceNameInSolution'),')'))]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
+              ],
+              "properties": {
+                "customerManagedKey": false
+              },
+              "scope": "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
+            },
+            {
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[concat(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '/providers/Microsoft.SecurityInsights//settings/SentinelHealth')]",
+              "name": "SentinelAllLogs",
+              "properties": {
+                "workspaceId": "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/onboardingStates', parameters('workspaceName'), 'Microsoft.SecurityInsights', 'default')]"
+              ]
+            },
+            {
+              "name": "[concat(parameters('workspaceName'),'/',parameters('perTableRetentionSettings')[copyIndex()][0])]",
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2023-09-01",
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceName'),')'))]"
+              ],
+              "properties": {
+                "retentionInDays": "[parameters('perTableRetentionSettings')[copyIndex()][1]]"
+              },
+              "copy": {
+                "name": "retentionConfigurationCopy",
+                "count": "[length(parameters('perTableRetentionSettings'))]"
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-02-01",
+              "name": "[concat('KV-SOC-',toUpper(parameters('clientName')))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "558176bf-ce27-4532-b203-c9049611edad",
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": false,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "enablePurgeProtection": true,
+                "enableRbacAuthorization": false,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                },
+                "accessPolicies": [
+                  {
+                    "objectId": "38f75c81-131b-4b28-a130-3142a0d169c6",
+                    "tenantId": "558176bf-ce27-4532-b203-c9049611edad",
+                    "permissions": {
+                      "secrets": [
+                        "get",
+                        "list"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+            "type": "Microsoft.ApiManagement/service",
+            "apiVersion": "2024-06-01-preview",
+            "name": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Consumption",
+                "capacity": 0
+            },
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "publisherEmail": "soc@formind.fr",
+                "publisherName": "SOC Formind",
+                "notificationSenderEmail": "apimgmt-noreply@mail.windowsazure.com",
+                "customProperties": {
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
+                },
+                "virtualNetworkType": "None",
+                "disableGateway": false,
+                "natGatewayState": "Disabled",
+                "apiVersionConstraint": {},
+                "publicNetworkAccess": "Enabled",
+                "legacyPortalStatus": "Disabled",
+                "releaseChannel": "Default"
+            }
+        }
+          ]
+        }
+      },
+      "resourceGroup": "[variables('resourceGroupName')]"
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[variables('resourceGroupName')]"
+    },
+    "workspaceName": {
+      "type": "string",
+      "value": "[variables('workspaceName')]"
+    },
+    "mspOfferName": {
+     "type": "string",
+     "value": "[concat('Managed by', ' ', parameters('mspOfferName'))]"
+    },
+    "authorizations": {
+     "type": "array",
+     "value": "[variables('authorizations')]"
+    }
+  }
+}
