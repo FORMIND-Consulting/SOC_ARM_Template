@@ -337,14 +337,6 @@
     "workspaceName": {
       "type": "string",
       "value": "[variables('workspaceName')]"
-    },
-    "mspOfferName": {
-     "type": "string",
-     "value": "[concat('Managed by', ' ', parameters('mspOfferName'))]"
-    },
-    "authorizations": {
-     "type": "array",
-     "value": "[variables('authorizations')]"
     }
   }
 }
