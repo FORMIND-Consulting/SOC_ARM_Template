@@ -6,7 +6,7 @@
       "defaultValue": "Client",
       "type": "string",
       "metadata": {
-        "description": "Nameoftheclient"
+        "description": "Name of the client"
       }
     },
     "resourceGroupNamingFormat": {
@@ -18,6 +18,13 @@
       "type": "string",
       "metadata": {
         "description": "Format for resource group name: kebab case (with hyphens) or snake case (with underscores)"
+      }
+    },
+    "deployOpenAI": {
+      "defaultValue": false,
+      "type": "bool",
+      "metadata": {
+        "description": "Deploy OpenAI resources (true/false)"
       }
     },
     "SecurityInsightsCase": {
@@ -43,7 +50,7 @@
       ],
       "type": "string",
       "metadata": {
-        "description": "Pricingtier:pergb2018orlegacytiers(Free,Standalone,PerNode,StandardorPremium)"
+        "description": "Pricing tier: pergb2018 or legacy tiers"
       }
     },
     "defaultRetention": {
@@ -52,32 +59,24 @@
       "maxValue": 730,
       "type": "int",
       "metadata": {
-        "description": "NumberofdaysofretentionasadefaultvalueforLogAnalyticsWorkspace.OnlyusedifconfigureDefaultRetentionissetto'true'."
+        "description": "Number of days of retention for Log Analytics Workspace"
       }
     },
     "perTableRetentionSettings": {
       "defaultValue": [
-        [
-          "SecurityIncident",
-          365
-        ],
-        [
-          "SecurityAlert",
-          365
-        ]
+        ["SecurityIncident", 365],
+        ["SecurityAlert", 365]
       ],
       "type": "array",
       "metadata": {
-        "description": "Arraycontainingthelistofdatatable-retentiondaypairsforwhichyouwanttochangetheretentionperiod.UsethedefaultemptyarrayvalueifyouwantthedatatabletousethedefaultLogAnalyticsWorkspaceretentionperiod."
+        "description": "Array containing the list of data table-retention day pairs"
       }
     },
     "tags": {
-      "defaultValue": {
-        
-      },
+      "defaultValue": {},
       "type": "object",
       "metadata": {
-        "description": "Resourcetags"
+        "description": "Resource tags"
       }
     }
   },
@@ -86,7 +85,8 @@
     "workspaceName": "[concat('ALA-',toUpper(parameters('clientName')),'-PROD')]",
     "workspaceNameInSolution": "[if(equals(parameters('SecurityInsightsCase'), 'uppercase'), variables('workspaceName'), concat('ala-',toLower(parameters('clientName')),'-prod'))]",
     "separator": "[if(equals(parameters('resourceGroupNamingFormat'), 'kebab'), '-', '_')]",
-    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]"
+    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]",
+    "openAiAccountName": "[concat('OAI-SOC-',toUpper(parameters('clientName')))]"
   },
   "resources": [
     {
@@ -130,8 +130,14 @@
           "tags": {
             "value": "[parameters('tags')]"
           },
-          "clientName" : {
-            "value" : "[parameters('clientName')]"
+          "clientName": {
+            "value": "[parameters('clientName')]"
+          },
+          "deployOpenAI": {
+            "value": "[parameters('deployOpenAI')]"
+          },
+          "openAiAccountName": {
+            "value": "[variables('openAiAccountName')]"
           }
         },
         "template": {
@@ -159,8 +165,14 @@
             "tags": {
               "type": "object"
             },
-            "clientName" : {
-            "type" : "string"
+            "clientName": {
+              "type": "string"
+            },
+            "deployOpenAI": {
+              "type": "bool"
+            },
+            "openAiAccountName": {
+              "type": "string"
             }
           },
           "resources": [
@@ -291,28 +303,28 @@
               }
             },
             {
-            "type": "Microsoft.ApiManagement/service",
-            "apiVersion": "2024-06-01-preview",
-            "name": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]",
-            "location": "[parameters('location')]",
-            "sku": {
+              "type": "Microsoft.ApiManagement/service",
+              "apiVersion": "2024-06-01-preview",
+              "name": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]",
+              "location": "[parameters('location')]",
+              "sku": {
                 "name": "Consumption",
                 "capacity": 0
-            },
-            "identity": {
+              },
+              "identity": {
                 "type": "SystemAssigned"
-            },
-            "properties": {
+              },
+              "properties": {
                 "publisherEmail": "soc@formind.fr",
                 "publisherName": "SOC Formind",
                 "notificationSenderEmail": "apimgmt-noreply@mail.windowsazure.com",
                 "customProperties": {
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
                 },
                 "virtualNetworkType": "None",
                 "disableGateway": false,
@@ -321,8 +333,54 @@
                 "publicNetworkAccess": "Enabled",
                 "legacyPortalStatus": "Disabled",
                 "releaseChannel": "Default"
+              }
+            },
+            {
+              "condition": "[parameters('deployOpenAI')]",
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2024-10-01",
+              "name": "[parameters('openAiAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "S0"
+              },
+              "kind": "OpenAI",
+              "properties": {
+                "apiProperties": {},
+                "customSubDomainName": "[toLower(replace(parameters('openAiAccountName'), 'OAI-SOC-', 'oai-soc-'))]",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "virtualNetworkRules": [],
+                  "ipRules": []
+                },
+                "allowProjectManagement": false,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "condition": "[parameters('deployOpenAI')]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[concat(parameters('openAiAccountName'), '/gpt-4o')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAiAccountName'))]"
+              ],
+              "sku": {
+                "name": "Standard",
+                "capacity": 10
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "gpt-4o",
+                  "version": "2024-11-20"
+                },
+                "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+                "currentCapacity": 10,
+                "raiPolicyName": "Microsoft.DefaultV2"
+              }
             }
-        }
           ]
         }
       },
@@ -337,6 +395,24 @@
     "workspaceName": {
       "type": "string",
       "value": "[variables('workspaceName')]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[concat('KV-SOC-',toUpper(parameters('clientName')))]"
+    },
+    "apiManagementName": {
+      "type": "string",
+      "value": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]"
+    },
+    "openAiAccountName": {
+      "condition": "[parameters('deployOpenAI')]",
+      "type": "string",
+      "value": "[variables('openAiAccountName')]"
+    },
+    "openAiEndpoint": {
+      "condition": "[parameters('deployOpenAI')]",
+      "type": "string",
+      "value": "[concat('https://oai-soc-', toLower(parameters('clientName')), '.openai.azure.com/')]"
     }
   }
 }
