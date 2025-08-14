@@ -47,7 +47,7 @@
       }
     },
     "defaultRetention": {
-      "defaultValue": 30,
+      "defaultValue": 90,
       "minValue": 7,
       "maxValue": 730,
       "type": "int",
@@ -63,6 +63,9 @@
         ],
         [
           "SecurityAlert",
+          365
+        ],
+        [ "Usage",
           365
         ]
       ],
@@ -242,7 +245,7 @@
               "type": "Microsoft.OperationalInsights/workspaces/tables",
               "apiVersion": "2023-09-01",
               "dependsOn": [
-                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/onboardingStates', parameters('workspaceName'), 'Microsoft.SecurityInsights', 'default')]"
+                "[resourceId('Microsoft.ApiManagement/service', concat('APIMAN-SOC-',toUpper(parameters('clientName'))))]"
               ],
               "properties": {
                 "retentionInDays": "[parameters('perTableRetentionSettings')[copyIndex()][1]]"
@@ -285,6 +288,47 @@
                         "get",
                         "list"
                       ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', concat('KV-SOC-',toUpper(parameters('clientName'))))]",
+              "name": "KeyVaultAllLogs",
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', concat('KV-SOC-',toUpper(parameters('clientName'))))]",
+                "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]"
+              ],
+              "properties": {
+                "workspaceId": "[resourceId('Microsoft.OperationalInsights/workspaces',parameters('workspaceName'))]",
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  }
+                ],
+                "logs": [
+                  {
+                    "category": "AuditEvent",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 0,
+                      "enabled": false
+                    }
+                  },
+                  {
+                    "category": "AzurePolicyEvaluationDetails",
+                    "enabled": true,
+                    "retentionPolicy": {
+                      "days": 0,
+                      "enabled": false
                     }
                   }
                 ]
