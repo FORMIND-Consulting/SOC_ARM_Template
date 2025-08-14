@@ -296,7 +296,7 @@
               "type": "Microsoft.OperationalInsights/workspaces/tables",
               "apiVersion": "2023-09-01",
               "dependsOn": [
-                "[resourceId('Microsoft.OperationsManagement/solutions',concat('SecurityInsights','(',parameters('workspaceName'),')'))]"
+                "[resourceId('Microsoft.OperationalInsights/workspaces/providers/onboardingStates', parameters('workspaceName'), 'Microsoft.SecurityInsights', 'default')]"
               ],
               "properties": {
                 "retentionInDays": "[parameters('perTableRetentionSettings')[copyIndex()][1]]"
