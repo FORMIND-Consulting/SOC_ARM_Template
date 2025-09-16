@@ -7,20 +7,32 @@
        "metadata": {
         "description": "Specify a unique name for your offer"
        },
-       "defaultValue": "SOC Formind - Sentinel"
+       "defaultValue": "SOC Formind - Managed Security Services"
     },
     "mspOfferDescription": {
        "type": "string",
        "metadata": {
-        "description": "Name of the Managed Service Provider offering"
+        "description": "Description of the Managed Service Provider offering"
        },
-       "defaultValue": "Formind Managed Services of Microsoft Sentinel"
+       "defaultValue": "Formind Managed Services of Security, ranging from simple managed EDR to full Security stack management"
     },
     "clientName": {
       "defaultValue": "Client",
       "type": "string",
       "metadata": {
         "description": "Nameoftheclient"
+      }
+    },
+    "analystGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Analyst Entra group dedicated to the client"
+      }
+    },
+    "builderGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Builder Entra group dedicated to the client"
       }
     },
     "resourceGroupNamingFormat": {
@@ -101,17 +113,42 @@
   "variables": {
     "mspRegistrationName": "[guid(parameters('mspOfferName'))]",
     "mspAssignmentName": "[guid(parameters('mspOfferName'))]",
-    "managedByTenantId": "558176bf-ce27-4532-b203-c9049611edad",
+    "managedByTenantId": "ab8a98ca-1224-47fe-8dd2-51a32ced9019",
     "authorizations": [
       {
-       "principalId": "18f48194-d943-47aa-badb-dae82cfc77f7",
+       "principalId": "b0b416ff-8279-49f7-a789-b009264608cf",
        "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
-       "principalIdDisplayName": "Formind - Soc_manage"
+       "principalIdDisplayName": "SOC Formind - Administrateurs"
       },
       {
-       "principalId": "18f48194-d943-47aa-badb-dae82cfc77f7",
+       "principalId": "b0b416ff-8279-49f7-a789-b009264608cf",
        "roleDefinitionId": "91c1777a-f3dc-4fae-b103-61d183457e46",
-       "principalIdDisplayName": "Formind - Soc_manage"
+       "principalIdDisplayName": "SOC Formind - Administrateurs"
+      },
+      {
+       "principalId": "[parameters('builderGroupGuid')]",
+       "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+       "principalIdDisplayName": "SOC Formind - Builders"
+      },
+      {
+       "principalId": "[parameters('analystGroupGuid')]",
+       "roleDefinitionId": "e8ddcd69-c73f-4f9f-9844-4100522f16ad",
+       "principalIdDisplayName": "SOC Formind - Analystes"
+      },
+      {
+       "principalId": "[parameters('analystGroupGuid')]",
+       "roleDefinitionId": "3e150937-b8fe-4cfb-8069-0eaf05ecd056",
+       "principalIdDisplayName": "SOC Formind - Analystes"
+      },
+      {
+       "principalId": "[parameters('analystGroupGuid')]",
+       "roleDefinitionId": "87a39d53-fc1b-424a-814c-f7e04687dc9e",
+       "principalIdDisplayName": "SOC Formind - Analystes"
+      },
+      {
+       "principalId": "[parameters('analystGroupGuid')]",
+       "roleDefinitionId": "73c42c96-874c-492b-b04d-ab87d138a893",
+       "principalIdDisplayName": "SOC Formind - Analystes"
       }
     ],
     "location": "francecentral",
