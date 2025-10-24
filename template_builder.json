@@ -65,7 +65,8 @@
           "SecurityAlert",
           365
         ],
-        [ "Usage",
+        [
+          "Usage",
           365
         ]
       ],
@@ -75,12 +76,29 @@
       }
     },
     "tags": {
-      "defaultValue": {
-        
-      },
+      "defaultValue": {},
       "type": "object",
       "metadata": {
         "description": "Resourcetags"
+      }
+    },
+    "analystGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Analyst Entra group specific to this client"
+      }
+    },
+    "builderGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Builder Entra group specific to this client"
+      }
+    },
+    "enableLighthouse": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable Azure Lighthouse delegation for this client"
       }
     }
   },
@@ -89,7 +107,49 @@
     "workspaceName": "[concat('ALA-',toUpper(parameters('clientName')),'-PROD')]",
     "workspaceNameInSolution": "[if(equals(parameters('SecurityInsightsCase'), 'uppercase'), variables('workspaceName'), concat('ala-',toLower(parameters('clientName')),'-prod'))]",
     "separator": "[if(equals(parameters('resourceGroupNamingFormat'), 'kebab'), '-', '_')]",
-    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]"
+    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]",
+    "mspOfferName": "SOC Formind - Managed Security Services",
+    "mspRegistrationName": "[guid(concat(variables('mspOfferName'), '-', variables('resourceGroupName')))]",
+    "mspAssignmentName": "[guid(concat('assignment-', variables('resourceGroupName')))]",
+    "managedByTenantId": "ab8a98ca-1224-47fe-8dd2-51a32ced9019",
+    "offerNameWithClient": "[concat(variables('mspOfferName'), ' - ', parameters('clientName'))]",
+    "authorizations": [
+      {
+        "principalId": "b0b416ff-8279-49f7-a789-b009264608cf",
+        "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+        "principalIdDisplayName": "SOC Formind - Administrateurs"
+      },
+      {
+        "principalId": "b0b416ff-8279-49f7-a789-b009264608cf",
+        "roleDefinitionId": "91c1777a-f3dc-4fae-b103-61d183457e46",
+        "principalIdDisplayName": "SOC Formind - Administrateurs"
+      },
+      {
+        "principalId": "[parameters('builderGroupGuid')]",
+        "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+        "principalIdDisplayName": "[concat('SOC Formind - Builders - ', parameters('clientName'))]"
+      },
+      {
+        "principalId": "[parameters('analystGroupGuid')]",
+        "roleDefinitionId": "e8ddcd69-c73f-4f9f-9844-4100522f16ad",
+        "principalIdDisplayName": "[concat('SOC Formind - Analystes - ', parameters('clientName'))]"
+      },
+      {
+        "principalId": "[parameters('analystGroupGuid')]",
+        "roleDefinitionId": "3e150937-b8fe-4cfb-8069-0eaf05ecd056",
+        "principalIdDisplayName": "[concat('SOC Formind - Analystes - ', parameters('clientName'))]"
+      },
+      {
+        "principalId": "[parameters('analystGroupGuid')]",
+        "roleDefinitionId": "87a39d53-fc1b-424a-814c-f7e04687dc9e",
+        "principalIdDisplayName": "[concat('SOC Formind - Analystes - ', parameters('clientName'))]"
+      },
+      {
+        "principalId": "[parameters('analystGroupGuid')]",
+        "roleDefinitionId": "73c42c96-874c-492b-b04d-ab87d138a893",
+        "principalIdDisplayName": "[concat('SOC Formind - Analystes - ', parameters('clientName'))]"
+      }
+    ]
   },
   "resources": [
     {
@@ -98,6 +158,18 @@
       "name": "[variables('resourceGroupName')]",
       "location": "[variables('location')]",
       "tags": "[parameters('tags')]"
+    },
+    {
+      "condition": "[parameters('enableLighthouse')]",
+      "type": "Microsoft.ManagedServices/registrationDefinitions",
+      "apiVersion": "2020-02-01-preview",
+      "name": "[variables('mspRegistrationName')]",
+      "properties": {
+        "registrationDefinitionName": "[variables('offerNameWithClient')]",
+        "description": "[concat('Formind Managed Services of Security for ', parameters('clientName'))]",
+        "managedByTenantId": "[variables('managedByTenantId')]",
+        "authorizations": "[variables('authorizations')]"
+      }
     },
     {
       "type": "Microsoft.Resources/deployments",
@@ -133,8 +205,8 @@
           "tags": {
             "value": "[parameters('tags')]"
           },
-          "clientName" : {
-            "value" : "[parameters('clientName')]"
+          "clientName": {
+            "value": "[parameters('clientName')]"
           }
         },
         "template": {
@@ -162,8 +234,8 @@
             "tags": {
               "type": "object"
             },
-            "clientName" : {
-            "type" : "string"
+            "clientName": {
+              "type": "string"
             }
           },
           "resources": [
@@ -335,28 +407,28 @@
               }
             },
             {
-            "type": "Microsoft.ApiManagement/service",
-            "apiVersion": "2024-06-01-preview",
-            "name": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]",
-            "location": "[parameters('location')]",
-            "sku": {
+              "type": "Microsoft.ApiManagement/service",
+              "apiVersion": "2024-06-01-preview",
+              "name": "[concat('APIMAN-SOC-',toUpper(parameters('clientName')))]",
+              "location": "[parameters('location')]",
+              "sku": {
                 "name": "Consumption",
                 "capacity": 0
-            },
-            "identity": {
+              },
+              "identity": {
                 "type": "SystemAssigned"
-            },
-            "properties": {
+              },
+              "properties": {
                 "publisherEmail": "soc@formind.fr",
                 "publisherName": "SOC Formind",
                 "notificationSenderEmail": "apimgmt-noreply@mail.windowsazure.com",
                 "customProperties": {
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
-                    "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls10": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Tls11": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Backend.Protocols.Ssl30": "False",
+                  "Microsoft.WindowsAzure.ApiManagement.Gateway.Protocols.Server.Http2": "False"
                 },
                 "virtualNetworkType": "None",
                 "disableGateway": false,
@@ -365,12 +437,40 @@
                 "publicNetworkAccess": "Enabled",
                 "legacyPortalStatus": "Disabled",
                 "releaseChannel": "Default"
+              }
             }
-        }
           ]
         }
       },
       "resourceGroup": "[variables('resourceGroupName')]"
+    },
+    {
+      "condition": "[parameters('enableLighthouse')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2021-04-01",
+      "name": "[concat('lighthouseAssignment-', parameters('clientName'))]",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.ManagedServices/registrationDefinitions', variables('mspRegistrationName'))]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "type": "Microsoft.ManagedServices/registrationAssignments",
+              "apiVersion": "2020-02-01-preview",
+              "name": "[variables('mspAssignmentName')]",
+              "properties": {
+                "registrationDefinitionId": "[subscriptionResourceId('Microsoft.ManagedServices/registrationDefinitions', variables('mspRegistrationName'))]"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "outputs": {
@@ -381,6 +481,16 @@
     "workspaceName": {
       "type": "string",
       "value": "[variables('workspaceName')]"
+    },
+    "lighthouseRegistrationId": {
+      "condition": "[parameters('enableLighthouse')]",
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.ManagedServices/registrationDefinitions', variables('mspRegistrationName'))]"
+    },
+    "lighthouseAssignmentId": {
+      "condition": "[parameters('enableLighthouse')]",
+      "type": "string",
+      "value": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', variables('resourceGroupName'), '/providers/Microsoft.ManagedServices/registrationAssignments/', variables('mspAssignmentName'))]"
     }
   }
 }
