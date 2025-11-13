@@ -35,6 +35,13 @@
         "description": "GUID of the Builder Entra group dedicated to the client"
       }
     },
+    "deployOpenAI": {
+      "defaultValue": false,
+      "type": "bool",
+      "metadata": {
+        "description": "Deploy OpenAI resources (true/false)"
+      }
+    },
     "resourceGroupNamingFormat": {
       "defaultValue": "kebab",
       "allowedValues": [
@@ -155,7 +162,8 @@
     "workspaceName": "[concat('ALA-',toUpper(parameters('clientName')),'-PROD')]",
     "workspaceNameInSolution": "[if(equals(parameters('SecurityInsightsCase'), 'uppercase'), variables('workspaceName'), concat('ala-',toLower(parameters('clientName')),'-prod'))]",
     "separator": "[if(equals(parameters('resourceGroupNamingFormat'), 'kebab'), '-', '_')]",
-    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]"
+    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]",
+    "openAiAccountName": "[concat('OAI-SOC-',toUpper(parameters('clientName')))]"
   },
   "resources": [
     {
@@ -226,6 +234,12 @@
           },
           "clientName" : {
             "value" : "[parameters('clientName')]"
+          },
+          "deployOpenAI": {
+            "value": "[parameters('deployOpenAI')]"
+          },
+          "openAiAccountName": {
+            "value": "[variables('openAiAccountName')]"
           }
         },
         "template": {
@@ -456,8 +470,54 @@
                 "publicNetworkAccess": "Enabled",
                 "legacyPortalStatus": "Disabled",
                 "releaseChannel": "Default"
+              }
+            },
+            {
+              "condition": "[parameters('deployOpenAI')]",
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2024-10-01",
+              "name": "[parameters('openAiAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "S0"
+              },
+              "kind": "OpenAI",
+              "properties": {
+                "apiProperties": {},
+                "customSubDomainName": "[toLower(parameters('openAiAccountName'))]",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "virtualNetworkRules": [],
+                  "ipRules": []
+                },
+                "allowProjectManagement": false,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "condition": "[parameters('deployOpenAI')]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[concat(parameters('openAiAccountName'), '/gpt-4o')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAiAccountName'))]"
+              ],
+              "sku": {
+                "name": "Standard",
+                "capacity": 10
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "gpt-4o",
+                  "version": "2024-11-20"
+                },
+                "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+                "currentCapacity": 10,
+                "raiPolicyName": "Microsoft.DefaultV2"
+              }
             }
-        }
           ]
         }
       },

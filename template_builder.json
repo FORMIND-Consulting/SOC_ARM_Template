@@ -100,6 +100,13 @@
       "metadata": {
         "description": "Enable Azure Lighthouse delegation for this client"
       }
+    },
+    "deployOpenAI": {
+      "defaultValue": true,
+      "type": "bool",
+      "metadata": {
+        "description": "Deploy OpenAI resources (true/false)"
+      }
     }
   },
   "variables": {
@@ -149,7 +156,8 @@
         "roleDefinitionId": "73c42c96-874c-492b-b04d-ab87d138a893",
         "principalIdDisplayName": "[concat('SOC Formind - Analystes - ', parameters('clientName'))]"
       }
-    ]
+    ],
+    "openAiAccountName": "[concat('OAI-SOC-',toUpper(parameters('clientName')))]"
   },
   "resources": [
     {
@@ -207,6 +215,12 @@
           },
           "clientName": {
             "value": "[parameters('clientName')]"
+          },
+          "deployOpenAI": {
+            "value": "[parameters('deployOpenAI')]"
+          },
+          "openAiAccountName": {
+            "value": "[variables('openAiAccountName')]"
           }
         },
         "template": {
@@ -235,6 +249,12 @@
               "type": "object"
             },
             "clientName": {
+              "type": "string"
+            },
+            "deployOpenAI": {
+              "type": "bool"
+            },
+            "openAiAccountName": {
               "type": "string"
             }
           },
@@ -437,6 +457,52 @@
                 "publicNetworkAccess": "Enabled",
                 "legacyPortalStatus": "Disabled",
                 "releaseChannel": "Default"
+              }
+            },
+            {
+              "condition": "[parameters('deployOpenAI')]",
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2024-10-01",
+              "name": "[parameters('openAiAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "S0"
+              },
+              "kind": "OpenAI",
+              "properties": {
+                "apiProperties": {},
+                "customSubDomainName": "[toLower(parameters('openAiAccountName'))]",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "virtualNetworkRules": [],
+                  "ipRules": []
+                },
+                "allowProjectManagement": false,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "condition": "[parameters('deployOpenAI')]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[concat(parameters('openAiAccountName'), '/gpt-4o')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('openAiAccountName'))]"
+              ],
+              "sku": {
+                "name": "Standard",
+                "capacity": 10
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "gpt-4o",
+                  "version": "2024-11-20"
+                },
+                "versionUpgradeOption": "OnceNewDefaultVersionAvailable",
+                "currentCapacity": 10,
+                "raiPolicyName": "Microsoft.DefaultV2"
               }
             }
           ]
