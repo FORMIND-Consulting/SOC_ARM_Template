@@ -377,7 +377,7 @@
                   "family": "A",
                   "name": "standard"
                 },
-                "tenantId": "558176bf-ce27-4532-b203-c9049611edad",
+                "tenantId": "ab8a98ca-1224-47fe-8dd2-51a32ced9019",
                 "enabledForDeployment": false,
                 "enabledForDiskEncryption": false,
                 "enabledForTemplateDeployment": false,
@@ -392,8 +392,8 @@
                 },
                 "accessPolicies": [
                   {
-                    "objectId": "38f75c81-131b-4b28-a130-3142a0d169c6",
-                    "tenantId": "558176bf-ce27-4532-b203-c9049611edad",
+                    "objectId": "b106331e-563d-4546-9af8-a2eec7322dc6",
+                    "tenantId": "ab8a98ca-1224-47fe-8dd2-51a32ced9019",
                     "permissions": {
                       "secrets": [
                         "get",
