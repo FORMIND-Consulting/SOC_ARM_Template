@@ -269,6 +269,12 @@
             },
             "clientName" : {
             "type" : "string"
+            },
+            "deployOpenAI": {
+              "type": "bool"
+            },
+            "openAiAccountName": {
+              "type": "string"
             }
           },
           "resources": [
