@@ -1,0 +1,88 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "mspOfferName": {
+       "type": "string",
+       "metadata": {
+        "description": "Specify a unique name for your offer"
+       },
+       "defaultValue": "SOC Formind - Managed Security Services - Defender for Cloud"
+    },
+    "mspOfferDescription": {
+       "type": "string",
+       "metadata": {
+        "description": "Description of the Managed Service Provider offering"
+       },
+       "defaultValue": "Formind Managed Services of Security, specifically for Defender for Cloud"
+    },
+    "analystGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Analyst Entra group dedicated to the client"
+      }
+    },
+    "builderGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Builder Entra group dedicated to the client"
+      }
+    }
+  },
+  "variables": {
+    "mspRegistrationName": "[guid(parameters('mspOfferName'))]",
+    "mspAssignmentName": "[guid(parameters('mspOfferName'))]",
+    "managedByTenantId": "ab8a98ca-1224-47fe-8dd2-51a32ced9019",
+    "authorizations": [
+      {
+       "principalId": "b0b416ff-8279-49f7-a789-b009264608cf",
+       "roleDefinitionId": "39bc4728-0917-49c7-9d2c-d95423bc2eb4",
+       "principalIdDisplayName": "SOC Formind - Administrateurs"
+      },
+      {
+       "principalId": "[parameters('builderGroupGuid')]",
+       "roleDefinitionId": "39bc4728-0917-49c7-9d2c-d95423bc2eb4",
+       "principalIdDisplayName": "SOC Formind - Builders"
+      },
+      {
+       "principalId": "[parameters('analystGroupGuid')]",
+       "roleDefinitionId": "39bc4728-0917-49c7-9d2c-d95423bc2eb4",
+       "principalIdDisplayName": "SOC Formind - Analystes"
+      }
+    ]
+  },
+  "resources": [
+    {
+     "type": "Microsoft.ManagedServices/registrationDefinitions",
+     "apiVersion": "2020-02-01-preview",
+     "name": "[variables('mspRegistrationName')]",
+     "properties": {
+      "registrationDefinitionName": "[parameters('mspOfferName')]",
+      "description": "[parameters('mspOfferDescription')]",
+      "managedByTenantId": "[variables('managedByTenantId')]",
+      "authorizations": "[variables('authorizations')]"
+     }
+    },
+    {
+     "type": "Microsoft.ManagedServices/registrationAssignments",
+     "apiVersion": "2020-02-01-preview",
+     "name": "[variables('mspAssignmentName')]",
+     "dependsOn": [
+      "[resourceId('Microsoft.ManagedServices/registrationDefinitions/', variables('mspRegistrationName'))]"
+     ],
+     "properties": {
+      "registrationDefinitionId": "[resourceId('Microsoft.ManagedServices/registrationDefinitions/', variables('mspRegistrationName'))]"
+     }
+    }
+  ],
+  "outputs": {
+    "mspOfferName": {
+     "type": "string",
+     "value": "[concat('Managed by', ' ', parameters('mspOfferName'))]"
+    },
+    "authorizations": {
+     "type": "array",
+     "value": "[variables('authorizations')]"
+    }
+  }
+}

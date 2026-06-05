@@ -1,0 +1,100 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "clientName": {
+      "defaultValue": "Client",
+      "type": "string",
+      "metadata": {
+        "description": "Nameoftheclient"
+      }
+    },
+    "resourceGroupNamingFormat": {
+      "defaultValue": "kebab",
+      "allowedValues": [
+        "kebab",
+        "snake"
+      ],
+      "type": "string",
+      "metadata": {
+        "description": "Format for resource group name: kebab case (with hyphens) or snake case (with underscores)"
+      }
+    },
+    "clientGroupGuid": {
+      "type": "string",
+      "metadata": {
+        "description": "GUID of the Client Entra group specific to this client"
+      }
+    }
+  },
+  "variables": {
+    "location": "francecentral",
+    "separator": "[if(equals(parameters('resourceGroupNamingFormat'), 'kebab'), '-', '_')]",
+    "resourceGroupName": "[concat('RG', variables('separator'), toUpper(parameters('clientName')))]",
+    "mspOfferName": "SOC Formind - Managed Security Services",
+    "mspRegistrationName": "[guid(concat(variables('mspOfferName'), '-', variables('resourceGroupName'),'-client'))]",
+    "mspAssignmentName": "[guid(concat('assignment-', variables('resourceGroupName'),'-client'))]",
+    "managedByTenantId": "ab8a98ca-1224-47fe-8dd2-51a32ced9019",
+    "offerNameWithClient": "[concat(variables('mspOfferName'), ' - ', variables('resourceGroupName'), ' - Client Access')]",
+    "authorizations": [
+      {
+        "principalId": "[parameters('clientGroupGuid')]",
+        "roleDefinitionId": "ab8e14d6-4a74-4a29-9ba8-549422addade",
+        "principalIdDisplayName": "concat('SOC Formind - Client ',parameters('clientName')"
+      }
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ManagedServices/registrationDefinitions",
+      "apiVersion": "2020-02-01-preview",
+      "name": "[variables('mspRegistrationName')]",
+      "properties": {
+        "registrationDefinitionName": "[variables('offerNameWithClient')]",
+        "description": "[concat('Formind Managed Services of Security for ', parameters('clientName'))]",
+        "managedByTenantId": "[variables('managedByTenantId')]",
+        "authorizations": "[variables('authorizations')]"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2021-04-01",
+      "name": "[concat('lighthouseAssignment-', parameters('clientName'),'-client-access')]",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.ManagedServices/registrationDefinitions', variables('mspRegistrationName'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "type": "Microsoft.ManagedServices/registrationAssignments",
+              "apiVersion": "2020-02-01-preview",
+              "name": "[variables('mspAssignmentName')]",
+              "properties": {
+                "registrationDefinitionId": "[subscriptionResourceId('Microsoft.ManagedServices/registrationDefinitions', variables('mspRegistrationName'))]"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[variables('resourceGroupName')]"
+    },
+    "lighthouseRegistrationId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.ManagedServices/registrationDefinitions', variables('mspRegistrationName'))]"
+    },
+    "lighthouseAssignmentId": {
+      "type": "string",
+      "value": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', variables('resourceGroupName'), '/providers/Microsoft.ManagedServices/registrationAssignments/', variables('mspAssignmentName'))]"
+    }
+  }
+}
